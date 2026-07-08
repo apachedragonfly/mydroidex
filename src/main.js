@@ -48,6 +48,22 @@ function summary() {
   return { collected, percentage, baseComplete }
 }
 
+function bulkKeys(kind, value) {
+  return droids.flatMap(droid => {
+    if (kind === 'type' && droid.type !== value) return []
+    return availableTiers(droid)
+      .filter(tier => kind !== 'tier' || tier.id === value)
+      .map(tier => slotKey(droid.id, tier.id))
+  })
+}
+
+function bulkButton(kind, value, label) {
+  const keys = bulkKeys(kind, value)
+  const completed = keys.filter(key => collection.has(key)).length
+  const isComplete = completed === keys.length
+  return `<button data-bulk="${kind}" data-value="${value}" ${isComplete ? 'disabled' : ''} aria-label="Select all ${label} entries"><span>${label}</span><b>${completed}/${keys.length}</b></button>`
+}
+
 function render() {
   const visible = getVisible()
   const stats = summary()
@@ -88,6 +104,10 @@ function render() {
           <div class="select-wrap"><select id="type-filter" aria-label="Filter by droid type">${['All', 'Worker', 'Astromech', 'Battle'].map(v => `<option ${filters.type === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
           <div class="view-toggle" aria-label="Collection status"><button data-status="all" class="${filters.status === 'all' ? 'active' : ''}">All</button><button data-status="missing" class="${filters.status === 'missing' ? 'active' : ''}">Missing</button><button data-status="complete" class="${filters.status === 'complete' ? 'active' : ''}">Complete</button></div>
           <div class="display-toggle" aria-label="Display mode"><button data-view="full" class="${filters.view === 'full' ? 'active' : ''}" aria-pressed="${filters.view === 'full'}" title="Detailed view">▦ <span>Full</span></button><button data-view="compact" class="${filters.view === 'compact' ? 'active' : ''}" aria-pressed="${filters.view === 'compact'}" title="Compact list view">☷ <span>Compact</span></button><button data-view="remaining" class="${filters.view === 'remaining' ? 'active' : ''}" aria-pressed="${filters.view === 'remaining'}" title="Missing Droidex variants">□ <span>Needed</span></button></div>
+        </div>
+        <div class="bulk-controls" aria-label="Bulk collection macros">
+          <div class="bulk-group"><span>VARIANT MACROS</span><div>${tiers.map(tier => bulkButton('tier', tier.id, tier.label)).join('')}</div></div>
+          <div class="bulk-group"><span>TYPE MACROS</span><div>${['Worker', 'Astromech', 'Battle'].map(type => bulkButton('type', type, type)).join('')}</div></div>
         </div>
         <div class="droid-list ${filters.view === 'remaining' ? 'remaining-list' : ''}">
           ${visible.length ? visible.map(filters.view === 'remaining' ? remainingRow : droidRow).join('') : `<div class="empty"><b>${filters.view === 'remaining' && collection.size === totalSlots ? 'DROIDEX COMPLETE' : 'NO MATCHING UNITS'}</b><span>${filters.view === 'remaining' && collection.size === totalSlots ? 'Every Droidex variant has been collected.' : 'Adjust your database filters and scan again.'}</span>${collection.size === totalSlots ? '' : '<button id="clear-filters">Clear filters</button>'}</div>`}
@@ -164,6 +184,12 @@ function bindEvents() {
   document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { filters[button.dataset.filter] = button.dataset.value; save(); render() }))
   document.querySelectorAll('[data-status]').forEach(button => button.addEventListener('click', () => { filters.status = button.dataset.status; save(); render() }))
   document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => { filters.view = button.dataset.view; save(); render() }))
+  document.querySelectorAll('[data-bulk]').forEach(button => button.addEventListener('click', () => {
+    const keys = bulkKeys(button.dataset.bulk, button.dataset.value)
+    const added = keys.filter(key => !collection.has(key)).length
+    keys.forEach(key => collection.add(key))
+    save(); render(); showToast(`${added} DROIDEX ${added === 1 ? 'ENTRY' : 'ENTRIES'} ADDED`)
+  }))
   document.querySelector('#type-filter')?.addEventListener('change', event => { filters.type = event.target.value; save(); render() })
   document.querySelector('#clear-filters')?.addEventListener('click', () => { filters = { ...filters, search: '', rarity: 'All', type: 'All', status: 'all' }; save(); render() })
   document.querySelector('#reset')?.addEventListener('click', () => {
