@@ -9,12 +9,15 @@ const safeParse = (key, fallback) => {
 }
 
 let collection = new Set(safeParse(STORAGE_KEY, []))
-let filters = { search: '', rarity: 'All', type: 'All', status: 'all', ...safeParse(FILTER_KEY, {}) }
+let filters = { search: '', rarity: 'All', type: 'All', status: 'all', view: 'full', ...safeParse(FILTER_KEY, {}) }
+if (!['full', 'compact'].includes(filters.view)) filters.view = 'full'
 
 const app = document.querySelector('#app')
 const slotKey = (id, tier) => `${id}:${tier}`
 const availableTiers = (droid) => droid.rarity === 'Iconic' ? tiers.slice(0, 1) : tiers
 const totalSlots = droids.reduce((sum, droid) => sum + availableTiers(droid).length, 0)
+const validSlots = new Set(droids.flatMap(droid => availableTiers(droid).map(tier => slotKey(droid.id, tier.id))))
+collection = new Set([...collection].filter(key => validSlots.has(key)))
 
 const droidGlyph = (type) => {
   if (type === 'Astromech') return `<svg viewBox="0 0 92 92" aria-hidden="true"><path d="M29 34a17 17 0 0 1 34 0v5H29z"/><path d="M27 42h38v34H27z"/><path d="m27 49-10 8v24h9M65 49l10 8v24h-9"/><circle class="eye" cx="46" cy="27" r="4"/><path class="line" d="M36 49h20M37 59h8v9h-8zM51 59h6"/></svg>`
@@ -72,7 +75,7 @@ function render() {
         </div>
       </section>
 
-      <section class="database">
+      <section class="database view-${filters.view}">
         <div class="section-heading"><div><span>DATABASE // 01</span><h2>Droid collection</h2></div><div class="result-count"><b>${visible.length}</b> of ${droids.length} models displayed</div></div>
         <div class="toolbar">
           <label class="search"><span>⌕</span><input id="search" type="search" placeholder="Search designation..." value="${escapeHtml(filters.search)}" autocomplete="off"></label>
@@ -81,13 +84,14 @@ function render() {
           </div>
           <div class="select-wrap"><select id="type-filter" aria-label="Filter by droid type">${['All', 'Worker', 'Astromech', 'Battle'].map(v => `<option ${filters.type === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
           <div class="view-toggle" aria-label="Collection status"><button data-status="all" class="${filters.status === 'all' ? 'active' : ''}">All</button><button data-status="missing" class="${filters.status === 'missing' ? 'active' : ''}">Missing</button><button data-status="complete" class="${filters.status === 'complete' ? 'active' : ''}">Complete</button></div>
+          <div class="display-toggle" aria-label="Display mode"><button data-view="full" class="${filters.view === 'full' ? 'active' : ''}" aria-pressed="${filters.view === 'full'}" title="Detailed view">▦ <span>Full</span></button><button data-view="compact" class="${filters.view === 'compact' ? 'active' : ''}" aria-pressed="${filters.view === 'compact'}" title="Compact list view">☷ <span>Compact</span></button></div>
         </div>
         <div class="droid-list">
           ${visible.length ? visible.map(droidRow).join('') : `<div class="empty"><b>NO MATCHING UNITS</b><span>Adjust your database filters and scan again.</span><button id="clear-filters">Clear filters</button></div>`}
         </div>
       </section>
     </main>
-    <footer><span>DROIDEX // LOCAL ARCHIVE</span><span>UNOFFICIAL FAN-MADE TRACKER · DATA MAY CHANGE WITH GAME UPDATES</span><button id="reset">RESET PROGRESS</button></footer>
+    <footer><span class="local-save"><i></i> SAVED LOCALLY ON THIS DEVICE</span><span>UNOFFICIAL FAN-MADE TRACKER · DATA MAY CHANGE WITH GAME UPDATES</span><button id="reset">RESET PROGRESS</button></footer>
     <div class="toast" role="status" aria-live="polite"></div>
   `
   bindEvents()
@@ -119,8 +123,10 @@ function escapeHtml(value) {
 }
 
 function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([...collection]))
-  localStorage.setItem(FILTER_KEY, JSON.stringify(filters))
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...collection]))
+    localStorage.setItem(FILTER_KEY, JSON.stringify(filters))
+  } catch { showToast('LOCAL SAVE UNAVAILABLE') }
 }
 
 function bindEvents() {
@@ -135,8 +141,9 @@ function bindEvents() {
   })
   document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { filters[button.dataset.filter] = button.dataset.value; save(); render() }))
   document.querySelectorAll('[data-status]').forEach(button => button.addEventListener('click', () => { filters.status = button.dataset.status; save(); render() }))
+  document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => { filters.view = button.dataset.view; save(); render() }))
   document.querySelector('#type-filter')?.addEventListener('change', event => { filters.type = event.target.value; save(); render() })
-  document.querySelector('#clear-filters')?.addEventListener('click', () => { filters = { search: '', rarity: 'All', type: 'All', status: 'all' }; save(); render() })
+  document.querySelector('#clear-filters')?.addEventListener('click', () => { filters = { ...filters, search: '', rarity: 'All', type: 'All', status: 'all' }; save(); render() })
   document.querySelector('#reset')?.addEventListener('click', () => {
     if (confirm('Reset all Droidex collection progress? This cannot be undone.')) { collection.clear(); save(); render(); showToast('ARCHIVE PROGRESS RESET') }
   })

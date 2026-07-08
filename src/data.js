@@ -33,6 +33,13 @@ const rows = [
   ['Mono-Walker', 'Legendary', 'Worker', 1500], ['BB9', 'Legendary', 'Astromech', 1300],
   ['R7', 'Legendary', 'Astromech', 1500], ['B2-RP', 'Legendary', 'Battle', 1300],
   ['Cyclo-Grav', 'Legendary', 'Battle', 1260], ['Opti-Strike', 'Legendary', 'Battle', 1500],
+  ['Snow Mouse', 'Mythic', 'Worker', 4400], ['RIC', 'Mythic', 'Worker', 5100],
+  ['RIC-1200', 'Mythic', 'Worker', 5800], ['LEP', 'Mythic', 'Worker', 6500],
+  ['Loadlifter', 'Mythic', 'Worker', 7200], ['DRFT-R', 'Mythic', 'Astromech', 5800],
+  ['MO-TRAK', 'Mythic', 'Astromech', 7200], ['TRI-TEK', 'Mythic', 'Astromech', 6500],
+  ['CYCLENS', 'Mythic', 'Astromech', 4400], ['KX', 'Mythic', 'Battle', 7200],
+  ['IG', 'Mythic', 'Battle', 5800],
+  ['C-3PO', 'Iconic', 'Worker', null], ['R2-D2', 'Iconic', 'Astromech', null],
   ['DJ R-3X', 'Iconic', 'Worker', null], ['CB-23', 'Iconic', 'Astromech', null],
   ['BB8', 'Iconic', 'Astromech', null], ['Mister Bones', 'Iconic', 'Battle', null],
   ['IG-11 Marshal', 'Iconic', 'Battle', null],
@@ -42,5 +49,5 @@ export const droids = rows.map(([name, rarity, type, income], index) => ({
   id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name, rarity, type, income, index,
 }))
 
-export const rarityOrder = ['Common', 'Rare', 'Epic', 'Legendary', 'Iconic']
+export const rarityOrder = ['Common', 'Rare', 'Epic', 'Legendary', 'Mythic', 'Iconic']
 export const typeIcons = { Worker: '⌁', Astromech: '◉', Battle: '⌖' }
