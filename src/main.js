@@ -4,6 +4,7 @@ import { economyFor } from './economy.js'
 
 const STORAGE_KEY = 'droidex-collection-v1'
 const FILTER_KEY = 'droidex-filters-v1'
+const EXPORT_VERSION = 1
 
 const safeParse = (key, fallback) => {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback } catch { return fallback }
@@ -115,7 +116,7 @@ function render() {
         </div>
       </section>
     </main>
-    <footer><span class="local-save"><i></i> SAVED LOCALLY ON THIS DEVICE</span><span>UNOFFICIAL FAN-MADE TRACKER · DATA MAY CHANGE WITH GAME UPDATES</span><button id="reset">RESET PROGRESS</button></footer>
+    <footer><span class="local-save"><i></i> SAVED LOCALLY ON THIS DEVICE</span><span>UNOFFICIAL FAN-MADE TRACKER · DATA MAY CHANGE WITH GAME UPDATES</span><div class="footer-actions"><button id="export-checklist">EXPORT</button><button id="import-checklist-button">IMPORT</button><input id="import-checklist" type="file" accept="application/json,.json"><button id="reset">RESET PROGRESS</button></div></footer>
     <div class="toast" role="status" aria-live="polite"></div>
   `
   bindEvents()
@@ -173,6 +174,83 @@ function save() {
   } catch { showToast('LOCAL SAVE UNAVAILABLE') }
 }
 
+function downloadExport(payload) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = exportFilename()
+  document.body.append(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
+function exportFilename() {
+  return `droidex-checklist-${new Date().toISOString().slice(0, 10)}.json`
+}
+
+async function exportChecklist() {
+  const payload = {
+    app: 'droidex-checklist',
+    version: EXPORT_VERSION,
+    exportedAt: new Date().toISOString(),
+    rosterSize: droids.length,
+    totalSlots,
+    collected: [...collection].sort(),
+    filters,
+  }
+  const file = new File([JSON.stringify(payload, null, 2)], exportFilename(), { type: 'application/json' })
+
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: 'Droidex checklist' })
+      showToast('CHECKLIST EXPORTED')
+      return
+    } catch (error) {
+      if (error?.name === 'AbortError') return
+    }
+  }
+
+  downloadExport(payload)
+  showToast('CHECKLIST EXPORTED')
+}
+
+function importPayload(payload) {
+  const slots = Array.isArray(payload) ? payload : payload?.collected
+  if (!Array.isArray(slots)) throw new Error('Missing collected checklist data')
+
+  const imported = new Set(slots.filter(key => typeof key === 'string' && validSlots.has(key)))
+  if (slots.length > 0 && imported.size === 0) throw new Error('No valid Droidex entries found')
+
+  collection = imported
+  if (payload?.filters && typeof payload.filters === 'object') {
+    filters = {
+      ...filters,
+      search: typeof payload.filters.search === 'string' ? payload.filters.search : filters.search,
+      rarity: ['All', ...rarityOrder].includes(payload.filters.rarity) ? payload.filters.rarity : filters.rarity,
+      type: ['All', 'Worker', 'Astromech', 'Battle'].includes(payload.filters.type) ? payload.filters.type : filters.type,
+      status: ['all', 'missing', 'complete'].includes(payload.filters.status) ? payload.filters.status : filters.status,
+      view: ['full', 'compact', 'remaining'].includes(payload.filters.view) ? payload.filters.view : filters.view,
+    }
+  }
+  save()
+  render()
+  showToast(`${collection.size} DROIDEX ENTRIES IMPORTED`)
+}
+
+async function importChecklist(file) {
+  if (!file) return
+  try {
+    const payload = JSON.parse(await file.text())
+    if (collection.size && !confirm('Importing will replace current Droidex checklist progress. Continue?')) return
+    importPayload(payload)
+  } catch (error) {
+    showToast('IMPORT FAILED: INVALID CHECKLIST FILE')
+    console.error(error)
+  }
+}
+
 function bindEvents() {
   document.querySelectorAll('[data-slot]').forEach(button => button.addEventListener('click', () => {
     const key = button.dataset.slot
@@ -194,6 +272,12 @@ function bindEvents() {
   }))
   document.querySelector('#type-filter')?.addEventListener('change', event => { filters.type = event.target.value; save(); render() })
   document.querySelector('#clear-filters')?.addEventListener('click', () => { filters = { ...filters, search: '', rarity: 'All', type: 'All', status: 'all' }; save(); render() })
+  document.querySelector('#export-checklist')?.addEventListener('click', exportChecklist)
+  document.querySelector('#import-checklist-button')?.addEventListener('click', () => document.querySelector('#import-checklist')?.click())
+  document.querySelector('#import-checklist')?.addEventListener('change', event => {
+    importChecklist(event.target.files?.[0])
+    event.target.value = ''
+  })
   document.querySelector('#reset')?.addEventListener('click', () => {
     if (confirm('Reset all Droidex collection progress? This cannot be undone.')) { collection.clear(); save(); render(); showToast('ARCHIVE PROGRESS RESET') }
   })
