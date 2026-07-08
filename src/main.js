@@ -1,5 +1,6 @@
 import './style.css'
 import { droids, tiers, rarityOrder, typeIcons } from './data.js'
+import { economyFor } from './economy.js'
 
 const STORAGE_KEY = 'droidex-collection-v1'
 const FILTER_KEY = 'droidex-filters-v1'
@@ -10,7 +11,7 @@ const safeParse = (key, fallback) => {
 
 let collection = new Set(safeParse(STORAGE_KEY, []))
 let filters = { search: '', rarity: 'All', type: 'All', status: 'all', view: 'full', ...safeParse(FILTER_KEY, {}) }
-if (!['full', 'compact'].includes(filters.view)) filters.view = 'full'
+if (!['full', 'compact', 'remaining'].includes(filters.view)) filters.view = 'full'
 
 const app = document.querySelector('#app')
 const slotKey = (id, tier) => `${id}:${tier}`
@@ -30,9 +31,10 @@ function getVisible() {
   return droids.filter(droid => {
     const keys = availableTiers(droid).map(t => slotKey(droid.id, t.id))
     const completed = keys.filter(key => collection.has(key)).length
-    const statusMatch = filters.status === 'all' ||
-      (filters.status === 'complete' && completed === keys.length) ||
-      (filters.status === 'missing' && completed < keys.length)
+    const effectiveStatus = filters.view === 'remaining' ? 'missing' : filters.status
+    const statusMatch = effectiveStatus === 'all' ||
+      (effectiveStatus === 'complete' && completed === keys.length) ||
+      (effectiveStatus === 'missing' && completed < keys.length)
     return (!query || `${droid.name} ${droid.rarity} ${droid.type}`.toLowerCase().includes(query)) &&
       (filters.rarity === 'All' || droid.rarity === filters.rarity) &&
       (filters.type === 'All' || droid.type === filters.type) && statusMatch
@@ -49,6 +51,7 @@ function summary() {
 function render() {
   const visible = getVisible()
   const stats = summary()
+  const visibleMissing = visible.reduce((sum, droid) => sum + availableTiers(droid).filter(tier => !collection.has(slotKey(droid.id, tier.id))).length, 0)
   app.innerHTML = `
     <div class="stars stars-a"></div><div class="stars stars-b"></div>
     <header class="site-header">
@@ -76,7 +79,7 @@ function render() {
       </section>
 
       <section class="database view-${filters.view}">
-        <div class="section-heading"><div><span>DATABASE // 01</span><h2>Droid collection</h2></div><div class="result-count"><b>${visible.length}</b> of ${droids.length} models displayed</div></div>
+        <div class="section-heading"><div><span>DATABASE // 01</span><h2>${filters.view === 'remaining' ? 'Still needed' : 'Droid collection'}</h2></div><div class="result-count">${filters.view === 'remaining' ? `<b>${visibleMissing}</b> variants remaining` : `<b>${visible.length}</b> of ${droids.length} models displayed`}</div></div>
         <div class="toolbar">
           <label class="search"><span>⌕</span><input id="search" type="search" placeholder="Search designation..." value="${escapeHtml(filters.search)}" autocomplete="off"></label>
           <div class="filter-group" aria-label="Rarity filter">
@@ -84,10 +87,10 @@ function render() {
           </div>
           <div class="select-wrap"><select id="type-filter" aria-label="Filter by droid type">${['All', 'Worker', 'Astromech', 'Battle'].map(v => `<option ${filters.type === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
           <div class="view-toggle" aria-label="Collection status"><button data-status="all" class="${filters.status === 'all' ? 'active' : ''}">All</button><button data-status="missing" class="${filters.status === 'missing' ? 'active' : ''}">Missing</button><button data-status="complete" class="${filters.status === 'complete' ? 'active' : ''}">Complete</button></div>
-          <div class="display-toggle" aria-label="Display mode"><button data-view="full" class="${filters.view === 'full' ? 'active' : ''}" aria-pressed="${filters.view === 'full'}" title="Detailed view">▦ <span>Full</span></button><button data-view="compact" class="${filters.view === 'compact' ? 'active' : ''}" aria-pressed="${filters.view === 'compact'}" title="Compact list view">☷ <span>Compact</span></button></div>
+          <div class="display-toggle" aria-label="Display mode"><button data-view="full" class="${filters.view === 'full' ? 'active' : ''}" aria-pressed="${filters.view === 'full'}" title="Detailed view">▦ <span>Full</span></button><button data-view="compact" class="${filters.view === 'compact' ? 'active' : ''}" aria-pressed="${filters.view === 'compact'}" title="Compact list view">☷ <span>Compact</span></button><button data-view="remaining" class="${filters.view === 'remaining' ? 'active' : ''}" aria-pressed="${filters.view === 'remaining'}" title="Missing Droidex variants">□ <span>Needed</span></button></div>
         </div>
-        <div class="droid-list">
-          ${visible.length ? visible.map(droidRow).join('') : `<div class="empty"><b>NO MATCHING UNITS</b><span>Adjust your database filters and scan again.</span><button id="clear-filters">Clear filters</button></div>`}
+        <div class="droid-list ${filters.view === 'remaining' ? 'remaining-list' : ''}">
+          ${visible.length ? visible.map(filters.view === 'remaining' ? remainingRow : droidRow).join('') : `<div class="empty"><b>${filters.view === 'remaining' && collection.size === totalSlots ? 'DROIDEX COMPLETE' : 'NO MATCHING UNITS'}</b><span>${filters.view === 'remaining' && collection.size === totalSlots ? 'Every Droidex variant has been collected.' : 'Adjust your database filters and scan again.'}</span>${collection.size === totalSlots ? '' : '<button id="clear-filters">Clear filters</button>'}</div>`}
         </div>
       </section>
     </main>
@@ -113,8 +116,27 @@ function droidRow(droid) {
   </article>`
 }
 
+function remainingRow(droid) {
+  const missing = availableTiers(droid).filter(tier => !collection.has(slotKey(droid.id, tier.id)))
+  return `<article class="needed-card rarity-${droid.rarity.toLowerCase()}">
+    <div class="needed-head"><div><span>${droid.rarity}</span><h3>${droid.name}</h3></div><small>${typeIcons[droid.type]} ${droid.type}</small></div>
+    <div class="needed-tiers">${missing.map(tier => {
+      const values = economyFor(droid, tier.id)
+      return `<button data-slot="${slotKey(droid.id, tier.id)}" aria-label="Mark ${droid.name} ${tier.label} as collected"><span class="needed-tier ${tier.id}"><i></i>${tier.label}</span><span class="needed-price">${values ? `<b>${formatCredits(values[0])}</b><small>BUY</small>` : '<b>EVENT</b><small>EXCLUSIVE</small>'}</span><span class="needed-price sell">${values ? `<b>${formatCredits(values[1])}</b><small>SELL</small>` : '<b>—</b><small>SELL</small>'}</span><span class="needed-add">＋</span></button>`
+    }).join('')}</div>
+  </article>`
+}
+
 function formatIncome(value) {
   if (value >= 1000) return `${Number((value / 1000).toFixed(2))}K`
+  return String(value)
+}
+
+function formatCredits(value) {
+  if (value >= 1e12) return `${Number((value / 1e12).toFixed(2))}T`
+  if (value >= 1e9) return `${Number((value / 1e9).toFixed(2))}B`
+  if (value >= 1e6) return `${Number((value / 1e6).toFixed(2))}M`
+  if (value >= 1e3) return `${Number((value / 1e3).toFixed(2))}K`
   return String(value)
 }
 
