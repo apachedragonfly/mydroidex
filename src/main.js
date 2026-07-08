@@ -77,7 +77,14 @@ function render() {
         <span class="brand-mark"><i></i><i></i><i></i></span>
         <span><b>DROIDEX</b><small>COLLECTION DATABASE</small></span>
       </a>
-      <div class="header-status"><span class="status-light"></span> SYSTEM ONLINE <b>V1.19</b></div>
+      <div class="header-tools">
+        <div class="transfer-actions" aria-label="Transfer Droidex checklist">
+          <button id="export-checklist">EXPORT</button>
+          <button id="import-checklist-button">IMPORT</button>
+          <input id="import-checklist" type="file" accept="application/json,.json">
+        </div>
+        <div class="header-status"><span class="status-light"></span> SYSTEM ONLINE <b>V1.19</b></div>
+      </div>
     </header>
     <main>
       <section class="hero">
@@ -116,7 +123,7 @@ function render() {
         </div>
       </section>
     </main>
-    <footer><span class="local-save"><i></i> SAVED LOCALLY ON THIS DEVICE</span><span>UNOFFICIAL FAN-MADE TRACKER · DATA MAY CHANGE WITH GAME UPDATES</span><div class="footer-actions"><button id="export-checklist">EXPORT</button><button id="import-checklist-button">IMPORT</button><input id="import-checklist" type="file" accept="application/json,.json"><button id="reset">RESET PROGRESS</button></div></footer>
+    <footer><span class="local-save"><i></i> SAVED LOCALLY ON THIS DEVICE</span><span>UNOFFICIAL FAN-MADE TRACKER · DATA MAY CHANGE WITH GAME UPDATES</span><button id="reset">RESET PROGRESS</button></footer>
     <div class="toast" role="status" aria-live="polite"></div>
   `
   bindEvents()
