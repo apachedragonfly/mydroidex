@@ -1,5 +1,5 @@
 import './style.css'
-import { droids, tiers, rarityOrder, typeIcons } from './data.js'
+import { droids, tiers, rarityOrder, typeIcons, incomeFor } from './data.js'
 import { economyFor } from './economy.js'
 
 const STORAGE_KEY = 'droidex-collection-v1'
@@ -16,6 +16,7 @@ if (!['full', 'compact', 'remaining'].includes(filters.view)) filters.view = 'fu
 const app = document.querySelector('#app')
 const slotKey = (id, tier) => `${id}:${tier}`
 const availableTiers = (droid) => droid.rarity === 'Iconic' ? tiers.slice(0, 1) : tiers
+const searchText = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 const totalSlots = droids.reduce((sum, droid) => sum + availableTiers(droid).length, 0)
 const validSlots = new Set(droids.flatMap(droid => availableTiers(droid).map(tier => slotKey(droid.id, tier.id))))
 collection = new Set([...collection].filter(key => validSlots.has(key)))
@@ -27,7 +28,7 @@ const droidGlyph = (type) => {
 }
 
 function getVisible() {
-  const query = filters.search.trim().toLowerCase()
+  const query = searchText(filters.search)
   return droids.filter(droid => {
     const keys = availableTiers(droid).map(t => slotKey(droid.id, t.id))
     const completed = keys.filter(key => collection.has(key)).length
@@ -35,7 +36,7 @@ function getVisible() {
     const statusMatch = effectiveStatus === 'all' ||
       (effectiveStatus === 'complete' && completed === keys.length) ||
       (effectiveStatus === 'missing' && completed < keys.length)
-    return (!query || `${droid.name} ${droid.rarity} ${droid.type}`.toLowerCase().includes(query)) &&
+    return (!query || searchText(`${droid.name} ${droid.rarity} ${droid.type}`).includes(query)) &&
       (filters.rarity === 'All' || droid.rarity === filters.rarity) &&
       (filters.type === 'All' || droid.type === filters.type) && statusMatch
   })
@@ -129,7 +130,8 @@ function droidRow(droid) {
     <div class="tier-checks">
       ${slots.map(t => {
         const key = slotKey(droid.id, t.id), checked = collection.has(key)
-        return `<button class="tier-check ${t.id} ${checked ? 'checked' : ''}" data-slot="${key}" aria-pressed="${checked}" aria-label="${droid.name} ${t.label}: ${checked ? 'collected' : 'not collected'}"><span class="check-box">${checked ? '✓' : ''}</span><span class="tier-name">${t.label}</span>${droid.income ? `<small>${formatIncome(droid.income * t.multiplier)}/s</small>` : ''}</button>`
+        const income = incomeFor(droid, t.id)
+        return `<button class="tier-check ${t.id} ${checked ? 'checked' : ''}" data-slot="${key}" aria-pressed="${checked}" aria-label="${droid.name} ${t.label}: ${checked ? 'collected' : 'not collected'}"><span class="check-box">${checked ? '✓' : ''}</span><span class="tier-name">${t.label}</span>${income ? `<small>${formatIncome(income)}/s</small>` : ''}</button>`
       }).join('')}
     </div>
     <div class="row-progress"><b>${collected}/${slots.length}</b><span><i style="height:${collected / slots.length * 100}%"></i></span></div>

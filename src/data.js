@@ -52,3 +52,17 @@ export const droids = rows.map(([name, rarity, type, income, legacyId], index) =
 
 export const rarityOrder = ['Common', 'Rare', 'Epic', 'Legendary', 'Mythic', 'Iconic']
 export const typeIcons = { Worker: '⌁', Astromech: '◉', Battle: '⌖' }
+
+const incomeMultipliers = {
+  Common: [1, 2, 4, 8, 12],
+  Rare: [1, 2, 4, 8, 12],
+  Epic: [1, 2, 4, 8, 34],
+  Legendary: [1, 2, 4, 8, 24],
+  Mythic: [1, 2, 4, 8, 16],
+}
+
+export const incomeFor = (droid, tierId) => {
+  if (!droid.income) return null
+  const tierIndex = tiers.findIndex(tier => tier.id === tierId)
+  return droid.income * incomeMultipliers[droid.rarity][tierIndex]
+}
