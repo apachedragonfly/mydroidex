@@ -23,6 +23,16 @@ const cycleOne = [
   step(15, 14500000000, [req('snow-mouse', 'gold'), req('ric', 'gold'), req('drft-r', 'gold')]),
   step(16, 42000000000, [req('lep', 'gold'), req('cyclens', 'gold'), req('ig', 'gold')]),
   step(17, 130000000000, [req('loadlifter', 'gold'), req('mo-trak', 'gold'), req('kx', 'gold')]),
+  step(18, 325000000000, [req('bb9', 'diamond'), req('r7', 'diamond'), req('mono-walker', 'rainbow')]),
+  step(19, 810000000000, [req('b2-rp', 'rainbow'), req('cyclo-grav', 'rainbow'), req('proto-roller', 'rainbow')]),
+  step(20, 2000000000000, [req('r7', 'rainbow'), req('opti-strike', 'rainbow'), req('mecha-droid', 'rainbow')]),
+  step(21, 3000000000000, [req('bb', 'beskar'), req('orb-walker', 'beskar'), req('groundmech', 'beskar')]),
+  step(22, 4500000000000, [req('amp-walker', 'beskar'), req('b1-heavy', 'beskar'), req('proto-roller', 'beskar')]),
+  step(23, 6000000000000, [req('opti-strike', 'beskar'), req('mono-walker', 'beskar'), req('r7', 'beskar')]),
+  step(24, 9000000000000, [req('bb9', 'beskar'), req('cyclo-grav', 'beskar'), req('mo-trak')]),
+  step(25, 13500000000000, [req('b2-rp', 'beskar'), req('ig'), req('drft-r', 'gold')]),
+  step(26, 21000000000000, [req('cyclens', 'gold'), req('loadlifter', 'diamond'), req('ric-1200', 'rainbow')]),
+  step(27, 32000000000000, [req('kx', 'diamond'), req('tri-tek', 'rainbow'), req('snow-mouse', 'beskar')]),
 ]
 
 export const superRebirthCycles = [1, 2, 3, 4].map(cycle => ({
